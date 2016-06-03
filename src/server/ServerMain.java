@@ -1,10 +1,8 @@
-package client;
+package server;
 
 import chatUtils.data.ChatMessage;
-import java.io.ByteArrayInputStream;
+import chatUtils.data.Consts;
 import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectInputStream;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
@@ -13,6 +11,7 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.Set;
+import utils.data.DataHandler;
 
 /**
  *
@@ -26,7 +25,7 @@ public class ServerMain {
 
         // ServerSocketChannel: selectable channel for stream-oriented listening sockets
         ServerSocketChannel crunchifySocket = ServerSocketChannel.open();
-        InetSocketAddress crunchifyAddr = new InetSocketAddress("localhost", 1111);
+        InetSocketAddress crunchifyAddr = new InetSocketAddress(Consts.INETADDRESS, Consts.PORT);
 
         // Binds the channel's socket to a local address and configures the socket to listen for connections
         crunchifySocket.bind(crunchifyAddr);
@@ -35,7 +34,7 @@ public class ServerMain {
         crunchifySocket.configureBlocking(false);
 
         int ops = crunchifySocket.validOps();
-        SelectionKey selectKey = crunchifySocket.register(selector, ops, null);
+        crunchifySocket.register(selector, ops, null);
 
         // Infinite loop..
         // Keep server running
@@ -50,8 +49,8 @@ public class ServerMain {
             Iterator<SelectionKey> crunchifyIterator = crunchifyKeys.iterator();
 
             while (crunchifyIterator.hasNext()) {
+                
                 SelectionKey myKey = crunchifyIterator.next();
-
                 // Tests whether this key's channel is ready to accept a new socket connection
                 if (myKey.isAcceptable()) {
                     SocketChannel crunchifyClient = crunchifySocket.accept();
@@ -67,44 +66,14 @@ public class ServerMain {
                 } else if (myKey.isReadable()) {
 
                     SocketChannel crunchifyClient = (SocketChannel) myKey.channel();
-//                    ObjectInputStream objectInputStream = new ObjectInputStream(Channels.newInputStream(crunchifyClient));
-                    ByteBuffer crunchifyBuffer = ByteBuffer.allocate(256);
+                    ByteBuffer crunchifyBuffer = ByteBuffer.allocate(1024);
 
                     crunchifyClient.read(crunchifyBuffer);
-                    byte[] message = crunchifyBuffer.array();
-                    ByteArrayInputStream bais = new ByteArrayInputStream(message);
-                    ObjectInput oIn = null;
-                    ChatMessage test = null;
-                    try {
-                        oIn = new ObjectInputStream(bais);
-                        test = (ChatMessage) oIn.readObject();
-                    } finally {
-                        oIn.close();
-                        bais.close();
-                    }
-//                    String result = new String(crunchifyBuffer.array()).trim();
-//                    crunchifyBuffer = ByteBuffer.allocate(Integer.parseInt(result));
-//                    crunchifyClient.read(crunchifyBuffer);
-//                    result = new String(crunchifyBuffer.array()).trim();
-//                    ChatMessage chatMessage = new ChatMessage(result);
-//                    
-//                    crunchifyClient.read(crunchifyBuffer);
-//                    result = new String(crunchifyBuffer.array()).trim();
-//                    crunchifyBuffer = ByteBuffer.allocate(Integer.parseInt(result));
-//                    crunchifyClient.read(crunchifyBuffer);
-//                    result = new String(crunchifyBuffer.array()).trim();
-//                    chatMessage.setMessage(result);
-//                    
-//                    crunchifyClient.read(crunchifyBuffer);
-//                    result = new String(crunchifyBuffer.array()).trim();
-//                    crunchifyBuffer = ByteBuffer.allocate(Integer.parseInt(result));
-//                    crunchifyClient.read(crunchifyBuffer);
-//                    result = new String(crunchifyBuffer.array()).trim();
-//                    chatMessage.setDateTime(result);
+                    ChatMessage chatMessage = (ChatMessage) DataHandler.byteBufferToObject(crunchifyBuffer);
 
-                    log("Message received: " + test);
+                    log("Message received: " + chatMessage);
 
-                    if (test.getMessage().equals("Crunchify")) {
+                    if (chatMessage.getMessage().equals("Crunchify")) {
                             crunchifyClient.close();
                             log("\nIt's time to close connection as we got last company name 'Crunchify'");
                             log("\nServer will keep running. Try running client again to establish new connection");
